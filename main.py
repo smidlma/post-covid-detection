@@ -42,8 +42,8 @@ def createConfig():
 
 
 def prepareData(classes: dict):
-    trainImagePath = "./train/images/"
-    trainLabelsPath = "./train/labels/"
+    trainImagePath = "./dataset/train/images/"
+    trainLabelsPath = "./dataset/train/labels/"
     os.makedirs(os.path.dirname(trainImagePath), exist_ok=True)
     os.makedirs(os.path.dirname(trainLabelsPath), exist_ok=True)
 
