@@ -39,6 +39,7 @@ def main():
     print(image.shape)
 
     image = Image.fromarray(image)
+  
     draw = ImageDraw.Draw(image)
     for annotation in annotationFile.annotations:
         if "P4a: patchy opacity" in annotation.markers:

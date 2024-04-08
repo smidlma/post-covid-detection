@@ -1,0 +1,6 @@
+path: /Users/smidlma/University/post-covid-detection/dataset
+train: train/images
+val: val/images
+
+nc: 2
+names: ['P4a: patchy opacity', 'P5a: linear opacity']
