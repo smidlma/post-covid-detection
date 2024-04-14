@@ -35,6 +35,7 @@ def main():
         sorted(attribute_counts.items(), key=lambda item: item[1], reverse=True)
     )
     print(sorted_dict)
+    print(multiple_markers)
 
 
 if __name__ == "__main__":
