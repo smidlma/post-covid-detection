@@ -117,7 +117,7 @@ class Augmentation:
                 A.RandomBrightnessContrast(p=0.4),
                 A.ColorJitter(p=0.7),
                 A.RandomCrop(p=0.3, width=640, height=640),
-                A.Solarize(p=0.7)
+                A.Solarize(p=0.7),
             ],
             bbox_params=A.BboxParams(format="yolo", label_fields=["class_labels"]),
         )
@@ -139,10 +139,18 @@ class Augmentation:
                 filter(lambda x: x.category_name in categories, image.bboxes),
             )
         )
-
-        aug = self.transform(
-            image=image.image, bboxes=bboxes, class_labels=class_labels
-        )
+        try:
+            aug = self.transform(
+                image=image.image, bboxes=bboxes, class_labels=class_labels
+            )
+        except:
+            # Edge case, bug in albumentations lib
+            return AnnotatedImage(
+                None,
+                [],
+                None,
+                None,
+            )
 
         return AnnotatedImage(
             aug["image"],
@@ -223,11 +231,18 @@ def main():
     dataset = Dataset("brezen")
 
     yolo_dir = "dataset"
-    categories = ["P4a: patchy opacity"]
-    dataset.create_yolo_dataset(yolo_dir, categories,  1)
+    categories = [
+        "P4a: patchy opacity",
+        "P4b: heterogenous opacity",
+        "A2: foreign body",
+        "P1: nodule < 1cm",
+    ]
+    dataset.create_yolo_dataset(yolo_dir, categories, 1)
 
     # for data in dataset:
-    #     data.visualize(["P4a: patchy opacity"])
+    #     data.visualize(["A2: foreign body"])
+
+    # P4a: patchy opacity, A2: foreign body, P4b: heterogenous opacity, P1: nodule < 1cm
 
 
 if __name__ == "__main__":
