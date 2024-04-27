@@ -7,27 +7,19 @@ import matplotlib.pyplot as plt
 import io
 import numpy as np
 
+from preprocessing import Dataset
 
-def extractClasses():
-    with open("brezen/config.json", "r") as f:
-        config = json.load(f)
-    markers = config["annotationMarkers"]
-
-    classes = {}
-    for idx, marker in enumerate(markers):
-        classes[idx] = marker["name"]
-        # "".repla
-
-    return classes
-
-
-def prepare(annFile: AnnotationFile, filter: list[str]):
-    pass
+# def find_marker(dir_path):
+#         self.filenames = [
+#             f
+#             for f in os.listdir(self.input_dir)
+#             if f.endswith(".json") and not f.startswith("config")
+#         ]
 
 
 def show_image(path: str, labels: list[str]):
     annotationFile = AnnotationFile.from_json_file(path)
-    dicom = pydicom.dcmread("brezen/" + annotationFile.sourceFile)
+    dicom = pydicom.dcmread("./anotace/brezen/" + annotationFile.sourceFile)
     print(dicom.pixel_array.shape)
     image = dicom.pixel_array.astype(float)
 
@@ -78,9 +70,22 @@ def show_image(path: str, labels: list[str]):
 
 
 def main():
-    print(extractClasses())
-    file_path = "brezen/142704_4012344_1.2.840.113564.10.1.28394376252560817261153186159151834210662.json"
-    show_image(file_path, ['P4a: patchy opacity'])
+    file_path = "./anotace/brezen/142704_4012344_1.2.840.113564.10.1.28394376252560817261153186159151834210662.dcm"
+    # show_image(file_path, ["P3: consolidation"])
+    dataset = Dataset("./anotace/old")
+
+    for data in dataset:
+        if data.visualize(["nodulace"], True): 
+            # data.crop_area()
+            pass
+            
+
+    # dicom = pydicom.dcmread(file_path)
+    # print(dicom)
+
+    # lines = dicom.__str__().count('\n')
+    # print(lines)
+
 
 
 if __name__ == "__main__":

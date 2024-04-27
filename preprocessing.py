@@ -4,7 +4,8 @@ import pydicom
 import numpy as np
 from PIL import Image, ImageDraw
 import albumentations as A
-import datetime
+import logging
+import matplotlib.pyplot as plt
 
 
 class BBox:
@@ -44,12 +45,18 @@ class BBox:
 
 class AnnotatedImage:
     def __init__(
-        self, image: np.uint8, bboxes: list[BBox], category_names: list, name: str
+        self,
+        image: np.uint8,
+        bboxes: list[BBox],
+        category_names: list,
+        name: str,
+        ann_points: list[Point] = None,
     ) -> None:
         self.image = image
         self.bboxes = bboxes
         self.category_names = category_names
         self.name = name
+        self.ann_points = ann_points
 
     @staticmethod
     def from_annotations(
@@ -57,6 +64,7 @@ class AnnotatedImage:
     ):
         bboxes = []
         category_names = []
+        ann_points = []
         im_height, im_width = image.shape
         for ann in annotations:
             for category in ann.markers:
@@ -64,14 +72,15 @@ class AnnotatedImage:
                     BBox.from_points(ann.points, im_width, im_height, category)
                 )
                 category_names.append(category)
-        return AnnotatedImage(image, bboxes, category_names, image_name)
+                ann_points.append(ann.points)
+        return AnnotatedImage(image, bboxes, category_names, image_name, ann_points)
 
-    def visualize(self, categories: list[str]):
-        im = Image.fromarray(self.image)
-        draw = ImageDraw.Draw(im)
+    def visualize(self, categories: list[str], plot=False):
 
         indices = [i for i, x in enumerate(self.category_names) if x in categories]
         if indices:
+            im = Image.fromarray(self.image)
+            draw = ImageDraw.Draw(im)
             for idx in indices:
                 bbox = self.bboxes[idx]
                 # Denormalize the bounding box coordinates
@@ -82,13 +91,38 @@ class AnnotatedImage:
                 # Calculate the top left and bottom right points of the rectangle
                 top_left = (x_center - width / 2, y_center - height / 2)
                 bottom_right = (x_center + width / 2, y_center + height / 2)
-                # Draw the rectangle on the image
-                draw.rectangle([top_left, bottom_right], outline="red", width=3)
-                draw.text((x_center, y_center), self.category_names[idx], fill="white")
 
-            im.show()
+                if plot:
+                    x_values = [point.x for point in self.ann_points[idx]]
+                    y_values = [point.y for point in self.ann_points[idx]]
+                    plt.plot(
+                        x_values,
+                        y_values,
+                        color="r",
+                    )
+                    plt.text(
+                        x_center, y_center, self.category_names[idx], color="white"
+                    )
+
+                else:
+                    # Draw the rectangle on the image
+                    draw.rectangle([top_left, bottom_right], outline="red", width=3)
+                    draw.text(
+                        (x_center, y_center),
+                        self.category_names[idx],
+                        fill="white",
+                        # font=ImageFont.truetype("arial", 15),
+                    )
+
+            if plot:
+                plt.imshow(self.image, cmap="gray")
+                plt.show()
+            else:
+                im.show()
+            return True
         elif not categories:
             raise NotImplementedError("Just show for all bboxes")
+        return False
 
     def save(self, im_path: str, label_path: str, categories: list):
         labels = []
@@ -106,6 +140,25 @@ class AnnotatedImage:
             im.save(os.path.join(im_path, self.name + ".png"))
             return True
         return False
+
+    def crop_area(self):
+        indices = [
+            i
+            for i, x in enumerate(self.category_names)
+            if x in ["O4: left lung outline", "O3: right lung outline"]
+        ]
+        if len(indices) > 1:
+            points = self.ann_points[indices[0]] + self.ann_points[indices[1]]
+
+            min_x = min(point.x for point in points)
+            min_y = min(point.y for point in points)
+            max_x = max(point.x for point in points)
+            max_y = max(point.y for point in points)
+
+            im = Image.fromarray(self.image)
+            cropped_im = im.crop((min_x, min_y, max_x, max_y))
+
+            cropped_im.save(os.path.join("cropped", self.name + "_cropped.png"))
 
 
 class Augmentation:
@@ -213,31 +266,60 @@ class Dataset:
         train_lab_dir = os.path.join(target_dir, "train", "labels/")
         val_im_dir = os.path.join(target_dir, "val", "images/")
         val_lab_dir = os.path.join(target_dir, "val", "labels/")
-        os.makedirs(os.path.dirname(train_im_dir), exist_ok=True)
-        os.makedirs(os.path.dirname(train_lab_dir), exist_ok=True)
-        os.makedirs(os.path.dirname(val_im_dir), exist_ok=True)
-        os.makedirs(os.path.dirname(val_lab_dir), exist_ok=True)
-
+        try:
+            os.makedirs(os.path.dirname(train_im_dir))
+            os.makedirs(os.path.dirname(train_lab_dir))
+            os.makedirs(os.path.dirname(val_im_dir))
+            os.makedirs(os.path.dirname(val_lab_dir))
+        except:
+            logging.info("Appending to already created directory...")
+        saved_image_counter = 0
         for image in self:
             is_saved = image.save(train_im_dir, train_lab_dir, categories)
             if is_saved:
-                for id in range(aug_per_image):
-                    im_aug = self.aug.augment_image(image, categories, id)
-                    # im_aug.visualize(categories)
-                    im_aug.save(train_im_dir, train_lab_dir, categories)
+                saved_image_counter += 1
+                if saved_image_counter % 4 == 0:
+                    logging.info("Moving image primary to validation folder...")
+                    os.rename(
+                        os.path.join(train_im_dir, image.name + ".png"),
+                        os.path.join(val_im_dir, image.name + ".png"),
+                    )
+                    os.rename(
+                        os.path.join(train_lab_dir, image.name + ".txt"),
+                        os.path.join(val_lab_dir, image.name + ".txt"),
+                    )
+                else:
+                    logging.info("Saving image primary image...")
+                    for id in range(aug_per_image):
+                        logging.info(f"Augmentation process {id}/{aug_per_image}...")
+                        im_aug = self.aug.augment_image(image, categories, id)
+                        # im_aug.visualize(categories)
+                        im_aug.save(train_im_dir, train_lab_dir, categories)
+
+    def merge(self, other: "Dataset", key_map: dict, target_dir, categories, aug_per_image=10):
+        for image in other:
+            image.category_names = list(map(
+                lambda x: key_map.get(x, x), image.category_names
+            ))
+            for bbox in image.bboxes:
+                if bbox.category_name in key_map.keys():
+                    setattr(bbox, 'category_name', key_map.get(bbox.category_name))
+            
+        self.create_yolo_dataset(target_dir, categories, aug_per_image)
+        other.create_yolo_dataset(target_dir, categories, aug_per_image)
+
 
 
 def main():
-    dataset = Dataset("brezen")
+    logging.basicConfig(level=logging.NOTSET)
+    key_map = {"proužek": "P5a: linear opacity"}
+    datasetOld = Dataset("./anotace/old")
 
-    yolo_dir = "dataset"
-    categories = [
-        "P4a: patchy opacity",
-        "P4b: heterogenous opacity",
-        "A2: foreign body",
-        "P1: nodule < 1cm",
-    ]
-    dataset.create_yolo_dataset(yolo_dir, categories, 1)
+    dataset = Dataset("./anotace/brezen")
+
+    yolo_dir = "dataset-merged"
+    categories = ["P5a: linear opacity"]
+    dataset.merge(datasetOld, key_map, yolo_dir, categories, 0)
 
     # for data in dataset:
     #     data.visualize(["A2: foreign body"])
