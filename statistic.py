@@ -1,6 +1,6 @@
 import json
 import os
-
+import matplotlib.pyplot as plt
 
 def show_dataset_statistic(dir_path):
     json_file_names = [
@@ -53,7 +53,42 @@ def show_dataset_statistic(dir_path):
     print('\n')
     print(sorted_file_dict)
 
+    print(len(sorted_dict))
+
     # print(multiple_markers)
+    
+
+    
+# Create a new figure
+    plt.figure(figsize=(20, 10))
+
+    # Create a subplot for sorted_dict
+    plt.subplot(1, 2, 1)
+    plt.bar(sorted_dict.keys(), sorted_dict.values())
+    plt.title('Výskyt kategorií v datasetu')
+    plt.ylabel('Počet')
+    plt.xlabel('Kategorie')
+    plt.xticks(rotation=90)  # Rotate x-axis labels for better visibility if keys are strings
+
+    # Add the value from sorted_dict above each bar
+    for i, v in enumerate(sorted_dict.values()):
+        plt.text(i, v, str(v), ha='center', va='bottom')
+
+    # Create a subplot for sorted_file_dict
+    plt.subplot(1, 2, 2)
+    plt.bar(sorted_file_dict.keys(), sorted_file_dict.values())
+    plt.title('Počet snímků dle kategorie')
+    plt.ylabel('Počet')
+    plt.xlabel('Kategorie')
+    plt.xticks(rotation=90)  # Rotate x-axis labels for better visibility if keys are strings
+
+    # Add the value from sorted_file_dict above each bar
+    for i, v in enumerate(sorted_file_dict.values()):
+        plt.text(i, v, str(v), ha='center', va='bottom')
+
+    # Display the plots
+    plt.tight_layout()
+    plt.show()
 
 
 def show_description():

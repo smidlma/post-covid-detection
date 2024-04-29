@@ -125,6 +125,14 @@ class AnnotatedImage:
         return False
 
     def save(self, im_path: str, label_path: str, categories: list):
+        """
+        Return True if label is also saved, 
+        image is always saved to dataset and if no label 
+        file present it acts as a background
+        """
+        im = Image.fromarray(self.image)
+        im.save(os.path.join(im_path, self.name + ".png"))
+
         labels = []
         for bbox in self.bboxes:
             if bbox.category_name in categories:
@@ -135,9 +143,6 @@ class AnnotatedImage:
         if labels:
             with open(os.path.join(label_path, self.name + ".txt"), "w") as f:
                 f.writelines(labels)
-
-            im = Image.fromarray(self.image)
-            im.save(os.path.join(im_path, self.name + ".png"))
             return True
         return False
 
@@ -296,18 +301,19 @@ class Dataset:
                         # im_aug.visualize(categories)
                         im_aug.save(train_im_dir, train_lab_dir, categories)
 
-    def merge(self, other: "Dataset", key_map: dict, target_dir, categories, aug_per_image=10):
+    def merge(
+        self, other: "Dataset", key_map: dict, target_dir, categories, aug_per_image=10
+    ):
         for image in other:
-            image.category_names = list(map(
-                lambda x: key_map.get(x, x), image.category_names
-            ))
+            image.category_names = list(
+                map(lambda x: key_map.get(x, x), image.category_names)
+            )
             for bbox in image.bboxes:
                 if bbox.category_name in key_map.keys():
-                    setattr(bbox, 'category_name', key_map.get(bbox.category_name))
-            
+                    setattr(bbox, "category_name", key_map.get(bbox.category_name))
+
         self.create_yolo_dataset(target_dir, categories, aug_per_image)
         other.create_yolo_dataset(target_dir, categories, aug_per_image)
-
 
 
 def main():

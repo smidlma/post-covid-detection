@@ -72,10 +72,10 @@ def show_image(path: str, labels: list[str]):
 def main():
     file_path = "./anotace/brezen/142704_4012344_1.2.840.113564.10.1.28394376252560817261153186159151834210662.dcm"
     # show_image(file_path, ["P3: consolidation"])
-    dataset = Dataset("./anotace/old")
+    dataset = Dataset("./anotace/brezen")
 
     for data in dataset:
-        if data.visualize(["nodulace"], True): 
+        if data.visualize(["P5d: reticulonodular pattern"], True): 
             # data.crop_area()
             pass
             
